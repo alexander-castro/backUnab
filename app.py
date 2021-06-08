@@ -111,24 +111,20 @@ with app.app_context():
     clf.fit(X_train,y_train.values.ravel())
     dump(clf, os.path.join(DIR,'model/dataModel.joblib'))
 
-@app.route('/api/patients', methods=['POST'])
+@app.route('/api/text', methods=['POST'])
 def postPatients():
     model = load(os.path.join(DIR,'model/dataModel.joblib'))
-    clf = load(os.path.join(DIR,'model/clf.joblib'))
-    cols = ['male', 'age', 'education', 'currentSmoker', 'cigsPerDay',
-       'prevalentStroke', 'prevalentHyp', 'diabetes', 'totChol', 'sysBP',
-       'diaBP', 'BMI', 'heartRate', 'glucose']
-    X = pd.DataFrame(data=request.json).transpose()
-    X = pd.DataFrame(X, columns=cols)
-    X = pd.DataFrame(column_trans_2.transform(X), columns=np.concatenate((categorical_columns, numeric_columns), axis=None), index=X.index)
-    novilty = clf.predict(pd.DataFrame(X, columns=numeric_columns)).tolist()[0]
-    X = pd.DataFrame(column_trans_1.transform(X))
-    X.columns=np.concatenate((numeric_columns, categorical_columns), axis=None)
-    result = {}
-    result['response'] = model.predict(X.iloc[[0]]).tolist()[0]
-    result['probability'] = model.predict_proba(X.iloc[[0]]).tolist()[0][1]
-    result['novilty'] = novilty
-    return jsonify({"Result": result})
+    df = pd.DataFrame()
+    df['text'] = [request.json]
+    df['text'] = df['text'].apply(contractions.fix)
+    df['text'] = df['text'].apply(word_tokenize).apply(preprocessing)
+    df['text'] = df['text'].apply(stem_and_lemmatize)
+    df['text'] = df['text'].apply(lambda x: ' '.join(map(str, x)))
+    text = vectorizer.transform(df.text)
+    newData = pd.DataFrame(data=text.toarray(), columns=vectorizer.get_feature_names())
+    final = pd.DataFrame(data=newData, columns=myData.columns)
+    final = final.drop('-Emotion-', axis=1)
+    return jsonify({"Result": clf.predict(final)})
 
 if __name__ == '__main__':
     app.run(threaded=True, port=5000)
