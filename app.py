@@ -7,8 +7,6 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import LabelEncoder
 import re, string, unicodedata
-import contractions
-import inflect
 from nltk import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import LancasterStemmer, WordNetLemmatizer
@@ -40,16 +38,6 @@ def remove_punctuation(words):
             new_words.append(new_word)
     return new_words
 
-def replace_numbers(words):
-    p = inflect.engine()
-    new_words = []
-    for word in words:
-        if word.isdigit():
-            new_word = p.number_to_words(word)
-        else:
-            new_words.append(word)
-    return new_words
-
 def remove_stopwords(words):
     new_words = []
     for word in words:
@@ -59,7 +47,6 @@ def remove_stopwords(words):
 
 def preprocessing(words):
     words = to_lowercase(words)
-    words = replace_numbers(words)
     words = remove_punctuation(words)
     words = remove_non_ascii(words)
     words = remove_stopwords(words)
@@ -93,7 +80,6 @@ with app.app_context():
     data = data[:20000]
     data['emotion'] = data['emotion'].map({'contentment': 'positive', 'awe': 'negative', 'sadness': 'negative', 'fear': 'negative', 'excitement': 'positive', 'amusement': 'positive', 'disgust': 'negative', 'anger': 'negative'})
     data = data.reset_index(drop=True)
-    data['utterance'] = data['utterance'].apply(contractions.fix)
     data['utterance'] = data['utterance'].apply(word_tokenize).apply(preprocessing)
     data['utterance'] = data['utterance'].apply(stem_and_lemmatize)
     data['utterance'] = data['utterance'].apply(lambda x: ' '.join(map(str, x)))
@@ -116,7 +102,6 @@ def postPatients():
     model = load(os.path.join(DIR,'model/dataModel.joblib'))
     df = pd.DataFrame()
     df['text'] = [request.json]
-    df['text'] = df['text'].apply(contractions.fix)
     df['text'] = df['text'].apply(word_tokenize).apply(preprocessing)
     df['text'] = df['text'].apply(stem_and_lemmatize)
     df['text'] = df['text'].apply(lambda x: ' '.join(map(str, x)))
